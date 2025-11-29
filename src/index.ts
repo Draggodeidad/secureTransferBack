@@ -20,9 +20,9 @@ const port = process.env["PORT"] || 3000;
 app.use(helmet());
 app.use(cors());
 
-// Middleware básico
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Middleware básico con límites aumentados para manejar manifests grandes
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Configuración de Swagger
 const swaggerOptions: swaggerJsdoc.Options = {

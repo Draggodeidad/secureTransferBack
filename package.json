@@ -11,7 +11,12 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+    "test:crypto": "tsx src/test-crypto.ts",
+    "demo:flujo": "tsx src/demo-flujo-completo.ts",
+    "generate:keys": "tsx src/generate-keys.ts"
   },
   "keywords": [],
   "author": "",
@@ -19,8 +24,11 @@
   "description": "",
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",
+    "@types/archiver": "^7.0.0",
     "@types/multer": "^2.0.0",
     "@types/uuid": "^10.0.0",
+    "adm-zip": "^0.5.16",
+    "archiver": "^7.0.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
@@ -33,8 +41,11 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@types/adm-zip": "^0.5.7",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
+    "@types/jest": "^29.5.12",
     "@types/node": "^24.10.1",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
@@ -43,7 +54,9 @@
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
+    "jest": "^29.7.0",
     "prettier": "^3.7.2",
+    "ts-jest": "^29.2.5",
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"

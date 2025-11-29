@@ -1,0 +1,34 @@
+# Render deployment configuration
+# https://render.com/docs/yaml-spec
+
+services:
+  # Backend API
+  - type: web
+    name: securetransfer-api
+    runtime: node
+    env: node
+    region: oregon # Usa el más cercano: oregon (US West), frankfurt (EU), singapore (Asia)
+    plan: free # free, starter, standard, pro
+    branch: feat/moduleCrypto # O main
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+
+    # Variables de entorno
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      - key: PORT
+        value: 10000
+
+      # ⚠️ IMPORTANTE: Configura estas variables manualmente en el dashboard de Render
+      # No las pongas aquí en el código (seguridad)
+      #
+      # En Render Dashboard → Environment:
+      # - SUPABASE_URL
+      # - SUPABASE_ANON_KEY
+      # - SUPABASE_SERVICE_ROLE_KEY
+      # - SUPABASE_BUCKET_NAME
+      # - SERVER_PUBLIC_KEY
+      # - SERVER_PRIVATE_KEY
