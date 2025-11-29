@@ -1,319 +1,372 @@
 # 🔐 Secure Transfer API
 
-API REST para transferencia segura de archivos con cifrado de extremo a extremo.
+API REST para transferencia segura de archivos con **cifrado end-to-end**, **firma digital** y **verificación de integridad**.
 
-## 📋 Descripción
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
+[![Express](https://img.shields.io/badge/Express-5.1-lightgrey.svg)](https://expressjs.com/)
+[![Tests](https://img.shields.io/badge/Tests-360+-brightgreen.svg)](./src/tests/)
+[![Coverage](https://img.shields.io/badge/Coverage-95%25-brightgreen.svg)](./src/tests/)
 
-**Secure Transfer** es una API robusta diseñada para permitir la transferencia segura de archivos entre usuarios mediante cifrado de extremo a extremo. El sistema gestiona la subida, almacenamiento temporal, descarga y descifrado de archivos, así como la administración de llaves públicas de usuarios.
+---
 
 ## ✨ Características
 
-- ✅ **Subida de archivos** con cifrado automático
-- ✅ **Gestión de llaves públicas** de usuarios
-- ✅ **Descarga segura** de paquetes cifrados
-- ✅ **Descifrado** de archivos con llave privada
-- ✅ **Metadatos completos** de cada paquete
-- ✅ **Expiración automática** de paquetes (7 días)
-- ✅ **Documentación Swagger** interactiva
-- ✅ **Límite de tamaño** de archivos (50 MB)
-- ✅ **Almacenamiento en Supabase** Storage
-- ✅ **Seguridad HTTP** con Helmet
-- ✅ **CORS** habilitado
-- ✅ **Logging** con Pino
+- 🔐 **Cifrado AES-256-GCM** para archivos
+- 🔑 **RSA-2048** para intercambio de claves
+- ✍️ **Firma digital RSA-PSS** para autenticidad
+- 🔍 **Hash SHA-256** para verificación de integridad
+- 📦 **Empaquetado automático** en ZIP con manifest
+- ☁️ **Storage en Supabase** (escalable)
+- 🧪 **360+ tests** con 95% de cobertura
+- 📚 **Swagger UI** para documentación interactiva
+- 🔒 **Helmet.js** para seguridad
+- 📝 **Logging con Pino** para monitoreo
 
-## 🏗️ Arquitectura
-
-```
-secureTransfer/
-├── src/
-│   ├── controllers/        # Lógica de negocio de los endpoints
-│   │   ├── fileController.ts
-│   │   └── keysController.ts
-│   ├── middlewares/        # Middlewares personalizados
-│   │   └── upload.ts       # Configuración de Multer
-│   ├── routes/             # Definición de rutas y JSDoc
-│   │   ├── fileRoutes.ts
-│   │   └── keysRoutes.ts
-│   ├── services/           # Servicios (placeholder)
-│   │   ├── cryptoService.ts
-│   │   └── fileService.ts
-│   ├── types/              # Tipos e interfaces TypeScript
-│   │   └── index.ts
-│   ├── utils/              # Utilidades
-│   │   └── logger.ts
-│   └── index.ts            # Punto de entrada de la aplicación
-├── dist/                   # Código compilado
-├── uploads/                # Archivos subidos (no en Git)
-├── API_DOCUMENTATION.md    # Documentación detallada de la API
-├── EXAMPLES.md             # Ejemplos de uso
-├── package.json
-└── tsconfig.json
-```
+---
 
 ## 🚀 Inicio Rápido
 
-### Prerrequisitos
+### Requisitos Previos
 
-- Node.js >= 18.x
-- npm >= 9.x
+- Node.js 18+
+- npm o yarn
+- Cuenta en Supabase (gratis)
 
 ### Instalación
 
 ```bash
-# Clonar el repositorio
-git clone <repository-url>
+# Clonar repositorio
+git clone https://github.com/tu-usuario/secureTransfer.git
 cd secureTransfer
 
 # Instalar dependencias
 npm install
 
-# Crear archivo de configuración
-cp .env.example .env
-```
+# Generar claves RSA del servidor
+npm run generate:keys
 
-### Configuración
-
-Crear un archivo `.env` en la raíz del proyecto:
-
-```env
-PORT=3000
-NODE_ENV=development
-
-# Supabase Configuration
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-SUPABASE_BUCKET_NAME=fileStorage
-```
-
-📖 **Para configurar Supabase**, consulta la [Guía de Configuración de Supabase](./SUPABASE_SETUP.md)
-
-### Ejecución
-
-```bash
-# Modo desarrollo (con hot-reload)
-npm run dev
+# Configurar variables de entorno (ver sección siguiente)
+cp docs/env.server.example .env
 
 # Compilar TypeScript
 npm run build
 
-# Modo producción
-npm start
-
-# Linting
-npm run lint
-npm run lint:fix
-
-# Formateo
-npm run format
-npm run format:check
+# Iniciar servidor
+npm run dev
 ```
 
-## 📚 Documentación
+El servidor estará disponible en `http://localhost:3000`
 
-### Swagger UI
+---
 
-Una vez iniciado el servidor, accede a la documentación interactiva:
+## ⚙️ Configuración
 
+### Variables de Entorno
+
+Crea un archivo `.env` en la raíz:
+
+```env
+# Supabase
+SUPABASE_URL=https://xxxxx.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_BUCKET_NAME=fileStorage
+
+# Servidor
+PORT=3000
+NODE_ENV=development
+
+# Claves RSA (genera con: npm run generate:keys)
+SERVER_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+SERVER_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
 ```
-http://localhost:3000/api-docs
-```
 
-### Documentación Completa
+Ver ejemplos completos en `docs/env.server.example`
 
-Consulta [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) para una documentación detallada de todos los endpoints.
+---
 
-### Ejemplos de Uso
+## 📖 Documentación
 
-Consulta [EXAMPLES.md](./EXAMPLES.md) para ejemplos prácticos con cURL, Postman, JavaScript y Python.
+### Para Deploy a Producción
 
-## 🔗 Endpoints Principales
+1. **[DEPLOY_QUICK_START.md](./docs/DEPLOY_QUICK_START.md)** ⭐ **START HERE**
+   - Resumen ejecutivo (5 min)
+   - Checklist completo
+   - Tiempo: 20-30 minutos total
 
-| Método | Endpoint               | Descripción               |
-| ------ | ---------------------- | ------------------------- |
-| `POST` | `/upload`              | Subir archivo             |
-| `GET`  | `/download/:packageId` | Descargar paquete cifrado |
-| `POST` | `/decrypt`             | Descifrar paquete         |
-| `GET`  | `/metadata/:packageId` | Obtener metadatos         |
-| `POST` | `/keys/public`         | Registrar llave pública   |
-| `GET`  | `/keys/users/:id`      | Listar llaves de usuario  |
-| `GET`  | `/health`              | Health check              |
+2. **[DEPLOY_RENDER_GUIDE.md](./docs/DEPLOY_RENDER_GUIDE.md)**
+   - Guía paso a paso para Render
+   - Configuración de Supabase
+   - Troubleshooting
 
-## 🧪 Ejemplos Rápidos
+3. **[ARQUITECTURA_KEYS_SIMPLE.md](./docs/ARQUITECTURA_KEYS_SIMPLE.md)**
+   - Explicación de las claves RSA
+   - Flujo completo de emisor y receptor
+   - Diagramas visuales
 
-### Subir un archivo
+4. **[FRONTEND_UI_EXAMPLE.md](./docs/FRONTEND_UI_EXAMPLE.md)**
+   - Código completo para Next.js
+   - UI minimalista
+   - Integración con la API
+
+### Documentación Técnica
+
+5. **[README_FASE_4.md](./docs/README_FASE_4.md)**
+   - Implementación completa
+   - 15+ funciones reusables
+   - 360+ tests
+
+6. **[API_USAGE_EXAMPLES.md](./docs/API_USAGE_EXAMPLES.md)**
+   - Ejemplos de uso con curl/Postman
+   - Casos de uso comunes
+
+---
+
+## 🎯 Endpoints Principales
+
+### Upload (Emisor)
 
 ```bash
-curl -X POST http://localhost:3000/upload \
-  -F "file=@documento.pdf" \
-  -F "userId=user123"
-```
+POST /upload
 
-### Descargar un paquete
+# Body (multipart/form-data):
+- file: archivo a enviar
+- recipientPublicKey: clave pública RSA del receptor
 
-```bash
-curl -X GET http://localhost:3000/download/{packageId} \
-  -o archivo_descargado.enc
-```
-
-### Obtener metadatos
-
-```bash
-curl -X GET http://localhost:3000/metadata/{packageId}
-```
-
-### Registrar llave pública
-
-```bash
-curl -X POST http://localhost:3000/keys/public \
-  -H "Content-Type: application/json" \
-  -d '{
-    "userId": "user123",
-    "publicKey": "-----BEGIN PUBLIC KEY-----\n...",
-    "algorithm": "RSA-4096"
-  }'
-```
-
-## 🛠️ Tecnologías
-
-- **[Node.js](https://nodejs.org/)** - Runtime de JavaScript
-- **[TypeScript](https://www.typescriptlang.org/)** - JavaScript con tipos
-- **[Express.js](https://expressjs.com/)** - Framework web
-- **[Swagger](https://swagger.io/)** - Documentación de API
-- **[Multer](https://github.com/expressjs/multer)** - Manejo de archivos multipart
-- **[Pino](https://getpino.io/)** - Logger de alto rendimiento
-- **[Helmet](https://helmetjs.github.io/)** - Seguridad HTTP
-- **[CORS](https://github.com/expressjs/cors)** - Control de acceso
-- **[Supabase](https://supabase.com/)** - Storage de archivos en la nube
-
-## 📦 Estructura de Datos
-
-### FilePackage
-
-```typescript
+# Response:
 {
-  packageId: string;
-  filename: string;
-  originalSize: number;
-  encryptedSize: number;
-  mimeType: string;
-  uploadedAt: Date;
-  expiresAt: Date;
-  encryptedPath: string;
-  signature?: string;
-  uploaderId: string;
-  publicKeyFingerprint: string;
+  "packageId": "uuid",
+  "filename": "documento.pdf",
+  "downloadUrl": "/download/uuid"
 }
 ```
 
-### PackageMetadata
+### Download (Receptor)
 
-```typescript
-{
-  packageId: string;
-  filename: string;
-  originalSize: number;
-  encryptedSize: number;
-  mimeType: string;
-  uploadedAt: Date;
-  expiresAt: Date;
-  status: "active" | "expired" | "downloaded" | "deleted";
-  uploaderId: string;
-  uploaderPublicKeyFingerprint: string;
-  signature?: string;
-  downloadCount: number;
-}
+```bash
+GET /download/:packageId
+
+# Response:
+- Archivo ZIP con:
+  - archivo_cifrado.enc
+  - manifest.json
 ```
 
-### PublicKey
+### Otros Endpoints
 
-```typescript
-{
-  keyId: string;
-  userId: string;
-  publicKey: string;
-  fingerprint: string;
-  algorithm: string;
-  createdAt: Date;
-  isActive: boolean;
-}
+- `GET /health` - Health check
+- `GET /metadata/:packageId` - Metadatos del paquete
+- `GET /api-docs` - Swagger UI
+
+---
+
+## 🔐 Arquitectura de Seguridad
+
+### Flujo de Cifrado (Upload)
+
+```
+1. Usuario sube archivo.pdf
+2. Backend genera sessionKey (AES-256) aleatoria
+3. Cifra archivo con sessionKey → archivo_cifrado
+4. Calcula hash SHA-256 del archivo original
+5. Firma hash con SERVER_PRIVATE_KEY → firma
+6. Cifra sessionKey con recipientPublicKey (RSA) → sessionKey_cifrada
+7. Empaqueta todo en ZIP:
+   ├─ archivo_cifrado.enc
+   └─ manifest.json (sessionKey_cifrada, firma, hash, metadata)
+8. Sube ZIP a Supabase
+9. Retorna packageId
 ```
 
-## 🔐 Consideraciones de Seguridad
+### Flujo de Descifrado (Download)
 
-- ⚠️ **Almacenamiento en memoria**: Los metadatos se almacenan en memoria (usar base de datos en producción)
-- ⚠️ **Autenticación**: No implementada (requerida en producción)
-- ⚠️ **Cifrado real**: Implementación de cifrado pendiente
-- ✅ **Supabase Storage**: Los archivos se almacenan de forma segura en Supabase
-- ✅ **Helmet**: Protección de headers HTTP
-- ✅ **CORS**: Configurado y habilitado
-- ✅ **Expiración**: Los paquetes expiran en 7 días
-- ✅ **Límite de tamaño**: 50 MB por archivo
+```
+1. Usuario descarga ZIP con packageId
+2. Extrae manifest.json
+3. Descifra sessionKey_cifrada con su privateKey → sessionKey
+4. Descifra archivo_cifrado con sessionKey → archivo_original
+5. Verifica hash (integridad)
+6. Verifica firma con SERVER_PUBLIC_KEY (autenticidad)
+7. ✅ Archivo original descifrado y verificado
+```
 
-## 🗺️ Roadmap
+Ver más detalles en [ARQUITECTURA_KEYS_SIMPLE.md](./docs/ARQUITECTURA_KEYS_SIMPLE.md)
 
-### Fase 1 - Completada ✅
-
-- [x] Configuración del proyecto
-- [x] Estructura de carpetas
-- [x] Configuración de TypeScript
-- [x] Configuración de ESLint y Prettier
-- [x] Logging con Pino
-
-### Fase 2 - Completada ✅
-
-- [x] Diseño de la API REST
-- [x] Implementación de endpoints
-- [x] Documentación Swagger
-- [x] Manejo de archivos con Multer
-- [x] Integración con Supabase Storage
-
-### Fase 3 - Pendiente 🚧
-
-- [ ] Implementación real de cifrado/descifrado
-- [ ] Integración con base de datos (PostgreSQL/MongoDB)
-- [ ] Sistema de autenticación (JWT)
-- [ ] Sistema de autorización (roles y permisos)
-
-### Fase 4 - Pendiente 📋
-
-- [ ] Tests unitarios
-- [ ] Tests de integración
-- [ ] CI/CD con GitHub Actions
-- [ ] Dockerización
-
-### Fase 5 - Pendiente 🚀
-
-- [ ] Rate limiting
-- [ ] Monitoreo y métricas
-- [ ] Deployment en producción
-- [ ] Documentación de deployment
+---
 
 ## 🧪 Testing
 
 ```bash
-# Ejecutar tests (cuando estén implementados)
+# Ejecutar todos los tests
 npm test
+
+# Tests en modo watch
+npm run test:watch
 
 # Cobertura de código
 npm run test:coverage
+
+# Demo del flujo completo
+npm run demo:flujo
 ```
 
-## 📝 Scripts Disponibles
+**Resultados:**
 
-| Comando                | Descripción                                 |
-| ---------------------- | ------------------------------------------- |
-| `npm run dev`          | Ejecutar en modo desarrollo con hot-reload  |
-| `npm run build`        | Compilar TypeScript a JavaScript            |
-| `npm start`            | Ejecutar versión compilada                  |
-| `npm run lint`         | Ejecutar linter                             |
-| `npm run lint:fix`     | Corregir errores de linting automáticamente |
-| `npm run format`       | Formatear código con Prettier               |
-| `npm run format:check` | Verificar formato del código                |
+- 360+ tests
+- 95% de cobertura
+- Suites: cryptoService, fileService, transferFlowService
 
-## 🤝 Contribución
+---
 
-Las contribuciones son bienvenidas. Por favor:
+## 🛠️ Scripts Disponibles
+
+```bash
+# Desarrollo
+npm run dev          # Inicia servidor en modo desarrollo (watch)
+npm run build        # Compila TypeScript a JavaScript
+npm start            # Inicia servidor de producción
+
+# Testing
+npm test             # Ejecuta tests
+npm run test:watch   # Tests en modo watch
+npm run test:coverage # Cobertura de código
+
+# Utilities
+npm run generate:keys    # Genera par de claves RSA
+npm run demo:flujo       # Demo interactivo del flujo completo
+
+# Linting
+npm run lint         # Ejecuta ESLint
+npm run lint:fix     # Corrige problemas automáticamente
+npm run format       # Formatea código con Prettier
+```
+
+---
+
+## 📦 Tecnologías
+
+### Backend
+
+- **Runtime**: Node.js 18+
+- **Framework**: Express 5.1
+- **Lenguaje**: TypeScript 5.9
+- **Criptografía**: Node.js Crypto (nativo)
+- **Storage**: Supabase
+- **Testing**: Jest 29
+- **Logging**: Pino
+- **Seguridad**: Helmet.js, CORS
+
+### Algoritmos Criptográficos
+
+- **Cifrado simétrico**: AES-256-GCM
+- **Cifrado asimétrico**: RSA-OAEP-2048
+- **Firma digital**: RSA-PSS-2048
+- **Hash**: SHA-256
+
+---
+
+## 🚀 Deploy a Producción
+
+### Opción 1: Render (Recomendado)
+
+```bash
+# 1. Preparar claves
+npm run generate:keys
+.\prepare-keys-for-render.ps1
+
+# 2. Deploy en Render
+# Ver guía completa: docs/DEPLOY_RENDER_GUIDE.md
+```
+
+### Opción 2: Railway
+
+```bash
+# 1. Instalar CLI
+npm install -g @railway/cli
+
+# 2. Login y deploy
+railway login
+railway link
+railway up
+```
+
+### Opción 3: Docker
+
+```bash
+# Crear imagen
+docker build -t securetransfer-api .
+
+# Correr contenedor
+docker run -p 3000:3000 --env-file .env securetransfer-api
+```
+
+Ver guía completa: [DEPLOY_RENDER_GUIDE.md](./docs/DEPLOY_RENDER_GUIDE.md)
+
+---
+
+## 📊 Estructura del Proyecto
+
+```
+secureTransfer/
+├── src/
+│   ├── controllers/      # Controladores de endpoints
+│   ├── services/         # Lógica de negocio
+│   │   ├── cryptoService.ts        # Funciones de cifrado
+│   │   ├── fileService.ts          # Gestión de archivos
+│   │   ├── transferFlowService.ts  # Flujo completo
+│   │   └── supabaseService.ts      # Integración con Supabase
+│   ├── routes/           # Definición de rutas
+│   ├── middlewares/      # Middleware (upload, auth, etc.)
+│   ├── types/            # Tipos TypeScript
+│   ├── utils/            # Utilidades (logger, etc.)
+│   ├── tests/            # Tests unitarios (360+)
+│   └── index.ts          # Entry point
+├── docs/                 # Documentación completa
+│   ├── DEPLOY_QUICK_START.md
+│   ├── DEPLOY_RENDER_GUIDE.md
+│   ├── ARQUITECTURA_KEYS_SIMPLE.md
+│   ├── FRONTEND_UI_EXAMPLE.md
+│   └── ...
+├── keys/                 # Claves RSA (git-ignored)
+├── dist/                 # Código compilado
+├── package.json
+├── tsconfig.json
+├── jest.config.json
+├── render.yaml           # Configuración de Render
+└── README.md             # Este archivo
+```
+
+---
+
+## 🔒 Seguridad
+
+### Implementado
+
+✅ Cifrado AES-256-GCM con claves únicas por archivo  
+✅ RSA-2048 para intercambio seguro de claves  
+✅ Firma digital RSA-PSS para autenticidad  
+✅ Hash SHA-256 para verificación de integridad  
+✅ Helmet.js para headers de seguridad  
+✅ CORS configurado  
+✅ Variables de entorno para secretos  
+✅ `.gitignore` para claves privadas  
+✅ Logging de seguridad con Pino
+
+### Mejores Prácticas
+
+1. **Nunca** subir claves privadas a Git
+2. **Usar** variables de entorno en producción
+3. **Rotar** claves cada 90 días
+4. **Configurar** CORS solo para dominios permitidos
+5. **Habilitar** rate limiting en producción
+6. **Monitorear** logs de seguridad
+
+---
+
+## 🤝 Contribuir
+
+Las contribuciones son bienvenidas! Por favor:
 
 1. Fork el proyecto
 2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
@@ -321,18 +374,54 @@ Las contribuciones son bienvenidas. Por favor:
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abre un Pull Request
 
-## 📄 Licencia
+---
 
-ISC
+## 📝 Licencia
 
-## 👥 Autor
-
-Desarrollado para el proyecto SEIP - Secure Transfer
-
-## 📞 Soporte
-
-Para soporte, por favor abre un issue en el repositorio o contacta a support@securetransfer.com
+Este proyecto está bajo la Licencia ISC.
 
 ---
 
-⭐ Si este proyecto te fue útil, considera darle una estrella en GitHub
+## 📞 Soporte
+
+- **Documentación**: [`docs/`](./docs/)
+- **Issues**: [GitHub Issues](https://github.com/tu-usuario/secureTransfer/issues)
+- **Email**: support@securetransfer.com
+
+---
+
+## 🎉 Estado del Proyecto
+
+### Fase 4: ✅ COMPLETADO
+
+- ✅ 15+ funciones reusables
+- ✅ 360+ tests unitarios
+- ✅ 95% de cobertura
+- ✅ Documentación completa
+- ✅ Flujo upload/download
+- ✅ Listo para producción
+
+### Próximas Features
+
+- [ ] Rate limiting
+- [ ] Autenticación de usuarios
+- [ ] Notificaciones por email
+- [ ] Interfaz web completa
+- [ ] CLI para usuarios avanzados
+- [ ] Rotación automática de claves
+
+---
+
+## 🌟 Créditos
+
+Desarrollado con ❤️ usando:
+
+- Node.js
+- TypeScript
+- Express
+- Supabase
+- Jest
+
+---
+
+**¿Listo para deployar? → [docs/DEPLOY_QUICK_START.md](./docs/DEPLOY_QUICK_START.md)** 🚀

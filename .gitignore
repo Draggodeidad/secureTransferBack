@@ -17,3 +17,14 @@ test-api.sh
 
 secureTransfer.json
 SUPABASE_SETUP.md
+
+# Claves privadas (seguridad)
+keys/
+*.pem
+*.key
+
+# Archivos de configuración con claves sensibles
+render-env-vars.txt
+
+src/tests/
+docs/

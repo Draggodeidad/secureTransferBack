@@ -10,10 +10,12 @@ export interface FilePackage {
   mimeType: string;
   uploadedAt: Date;
   expiresAt: Date;
-  encryptedPath: string;
-  signature?: string;
+  encryptedPath: string; // Ruta del archivo ZIP en Supabase
+  fileHash: string; // Hash SHA-256 del archivo original
+  signature: string; // Firma digital del hash (base64)
   uploaderId: string;
-  publicKeyFingerprint: string;
+  uploaderPublicKey: string; // Clave pública del emisor (PEM)
+  publicKeyFingerprint: string; // Fingerprint de la clave pública
 }
 
 export interface PackageMetadata {
@@ -26,8 +28,10 @@ export interface PackageMetadata {
   expiresAt: Date;
   status: "active" | "expired" | "downloaded" | "deleted";
   uploaderId: string;
+  uploaderPublicKey: string;
   uploaderPublicKeyFingerprint: string;
-  signature?: string;
+  fileHash: string;
+  signature: string;
   downloadCount: number;
 }
 
@@ -48,11 +52,18 @@ export interface UploadResponse {
   encryptedSize: number;
   expiresAt: Date;
   downloadUrl: string;
+  fileHash: string;
+}
+
+export interface UploadRequest {
+  userId?: string;
+  recipientPublicKey: string; // Solo necesita la clave pública del receptor
+  // Las claves del servidor se leen desde variables de entorno
 }
 
 export interface DecryptRequest {
   packageId: string;
-  privateKey: string;
+  privateKey: string; // Clave privada del receptor (PEM)
 }
 
 export interface DecryptResponse {

@@ -4,6 +4,7 @@ import {
   downloadPackage,
   decryptPackage,
   getPackageMetadata,
+  getPackageManifest,
 } from "../controllers/fileController.js";
 import { upload } from "../middlewares/upload.js";
 
@@ -303,5 +304,37 @@ router.post("/decrypt", decryptPackage);
  *               $ref: '#/components/schemas/Error'
  */
 router.get("/metadata/:packageId", getPackageMetadata);
+
+/**
+ * @swagger
+ * /manifest/{packageId}:
+ *   get:
+ *     summary: Obtener el manifest de un paquete
+ *     description: |
+ *       Obtiene el manifest.json del paquete ZIP que contiene
+ *       los metadatos criptográficos necesarios para el descifrado.
+ *     tags:
+ *       - Archivos
+ *     parameters:
+ *       - in: path
+ *         name: packageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID único del paquete
+ *         example: "550e8400-e29b-41d4-a716-446655440000"
+ *     responses:
+ *       200:
+ *         description: Manifest obtenido exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       404:
+ *         description: Paquete no encontrado
+ *       501:
+ *         description: Funcionalidad no implementada aún
+ */
+router.get("/manifest/:packageId", getPackageManifest);
 
 export default router;
