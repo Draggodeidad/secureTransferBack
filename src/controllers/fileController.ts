@@ -346,6 +346,135 @@ export const decryptPackage = async (
 };
 
 /**
+ * Controlador para descargar archivo descifrado directamente
+ * El receptor envía su clave privada y recibe el archivo original
+ */
+export const downloadDecryptedFile = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const packageId = req.params["packageId"];
+    let { privateKey } = req.body;
+
+    if (!packageId) {
+      res.status(400).json({ error: "Se requiere packageId" });
+      return;
+    }
+
+    if (!privateKey) {
+      res.status(400).json({
+        error: "Se requiere privateKey (clave privada del receptor)",
+      });
+      return;
+    }
+
+    // Normalizar la clave privada
+    privateKey = privateKey.replace(/\\n/g, "\n").replace(/\\r/g, "").trim();
+
+    // Validar formato de la clave privada
+    if (
+      !privateKey.includes("-----BEGIN") ||
+      !privateKey.includes("-----END")
+    ) {
+      res.status(400).json({
+        error:
+          "Formato de clave privada inválido. Debe ser una clave RSA en formato PEM.",
+      });
+      return;
+    }
+
+    const filePackage = packagesDB.get(packageId);
+    if (!filePackage) {
+      res.status(404).json({ error: "Paquete no encontrado" });
+      return;
+    }
+
+    // Verificar si el paquete ha expirado
+    if (new Date() > filePackage.expiresAt) {
+      res.status(410).json({ error: "El paquete ha expirado" });
+      return;
+    }
+
+    logger.info(
+      { packageId, filename: filePackage.filename },
+      "Descargando y descifrando archivo automáticamente"
+    );
+
+    // 1. Descargar paquete ZIP desde Supabase
+    const fileBlob = await downloadFileFromSupabase(filePackage.encryptedPath);
+    const arrayBuffer = await fileBlob.arrayBuffer();
+    const zipBuffer = Buffer.from(arrayBuffer);
+
+    // 2. Extraer manifest del ZIP
+    const zip = new AdmZip(zipBuffer);
+    const manifestEntry = zip.getEntry("manifest.json");
+
+    if (!manifestEntry) {
+      res.status(500).json({
+        error: "Manifest no encontrado en el paquete",
+      });
+      return;
+    }
+
+    const manifestContent = manifestEntry.getData().toString("utf8");
+    const manifest = JSON.parse(manifestContent);
+
+    // Normalizar clave pública del uploader en el manifest
+    if (manifest.uploaderPublicKey) {
+      manifest.uploaderPublicKey = manifest.uploaderPublicKey
+        .replace(/\\n/g, "\n")
+        .replace(/\\r/g, "")
+        .trim();
+    }
+
+    // 3. Descifrar el archivo
+    const { fileBuffer, verified } = await decryptSecureFile(
+      manifest,
+      privateKey
+    );
+
+    if (!verified) {
+      logger.warn(
+        { packageId },
+        "⚠️ Advertencia: Verificación de firma o integridad falló"
+      );
+    }
+
+    // 4. Actualizar contador de descargas
+    const metadata = metadataDB.get(packageId);
+    if (metadata) {
+      metadata.downloadCount++;
+      if (metadata.downloadCount === 1) {
+        metadata.status = "downloaded";
+      }
+    }
+
+    logger.info(
+      { packageId, size: fileBuffer.length, verified },
+      "Archivo descifrado y enviado exitosamente"
+    );
+
+    // 5. Enviar archivo original descifrado
+    res.setHeader("Content-Type", filePackage.mimeType);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${filePackage.filename}"`
+    );
+    res.setHeader("Content-Length", fileBuffer.length);
+    res.setHeader("X-File-Verified", verified.toString());
+
+    res.send(fileBuffer);
+  } catch (error) {
+    logger.error(error, "Error al descargar archivo descifrado");
+    res.status(500).json({
+      error: "Error al descifrar y descargar el archivo",
+      details: error instanceof Error ? error.message : "Error desconocido",
+    });
+  }
+};
+
+/**
  * Controlador para obtener metadatos de un paquete
  */
 export const getPackageMetadata = async (

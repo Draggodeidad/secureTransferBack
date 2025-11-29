@@ -158,12 +158,35 @@ async function createZipPackage(manifest: PackageManifest): Promise<Buffer> {
       reject(err);
     });
 
-    // Agregar manifest como JSON
+    // 1. Agregar el archivo cifrado (.enc)
+    // Concatenar ciphertext + IV + authTag para el archivo .enc
+    const ciphertext = base64ToBuffer(manifest.encryptedFile.ciphertext);
+    const iv = base64ToBuffer(manifest.encryptedFile.iv);
+    const authTag = base64ToBuffer(manifest.encryptedFile.authTag);
+
+    // Crear el archivo cifrado completo
+    const encryptedFileBuffer = Buffer.concat([ciphertext, iv, authTag]);
+
+    archive.append(encryptedFileBuffer, {
+      name: "encrypted_file.enc",
+    });
+
+    logger.info(
+      {
+        encryptedSize: encryptedFileBuffer.length,
+        ciphertextSize: ciphertext.length,
+        ivSize: iv.length,
+        authTagSize: authTag.length,
+      },
+      "Archivo cifrado agregado al ZIP"
+    );
+
+    // 2. Agregar manifest como JSON
     archive.append(JSON.stringify(manifest, null, 2), {
       name: "manifest.json",
     });
 
-    // Agregar README con instrucciones
+    // 3. Agregar README con instrucciones
     const readme = `
 # Paquete Seguro - SecureTransfer
 
@@ -171,7 +194,9 @@ Este archivo ZIP contiene un archivo cifrado de forma segura.
 
 ## Contenido
 
-- manifest.json: Metadatos del paquete cifrado
+- encrypted_file.enc: Archivo cifrado con AES-256-GCM
+- manifest.json: Metadatos del paquete cifrado (incluye clave de sesión cifrada, firma, etc.)
+- README.txt: Este archivo
 
 ## Seguridad
 

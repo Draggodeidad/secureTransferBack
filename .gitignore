@@ -28,3 +28,7 @@ render-env-vars.txt
 
 src/tests/
 docs/
+
+decrypt-package.ps1
+test-complete-flow.ps1
+test-download-options.ps1
