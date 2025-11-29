@@ -1,5 +1,16 @@
 node_modules
 
 .env
+.env.local
 dist
 build
+*.log
+coverage
+.DS_Store
+uploads
+
+.env.example
+API_DOCUMENTATION.md
+EXAMPLES.md
+test-api.ps1
+test-api.sh
