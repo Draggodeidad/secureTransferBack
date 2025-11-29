@@ -15,7 +15,8 @@ API REST para transferencia segura de archivos con cifrado de extremo a extremo.
 - ✅ **Metadatos completos** de cada paquete
 - ✅ **Expiración automática** de paquetes (7 días)
 - ✅ **Documentación Swagger** interactiva
-- ✅ **Límite de tamaño** de archivos (100 MB)
+- ✅ **Límite de tamaño** de archivos (50 MB)
+- ✅ **Almacenamiento en Supabase** Storage
 - ✅ **Seguridad HTTP** con Helmet
 - ✅ **CORS** habilitado
 - ✅ **Logging** con Pino
@@ -77,7 +78,15 @@ Crear un archivo `.env` en la raíz del proyecto:
 ```env
 PORT=3000
 NODE_ENV=development
+
+# Supabase Configuration
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+SUPABASE_BUCKET_NAME=fileStorage
 ```
+
+📖 **Para configurar Supabase**, consulta la [Guía de Configuración de Supabase](./SUPABASE_SETUP.md)
 
 ### Ejecución
 
@@ -175,6 +184,7 @@ curl -X POST http://localhost:3000/keys/public \
 - **[Pino](https://getpino.io/)** - Logger de alto rendimiento
 - **[Helmet](https://helmetjs.github.io/)** - Seguridad HTTP
 - **[CORS](https://github.com/expressjs/cors)** - Control de acceso
+- **[Supabase](https://supabase.com/)** - Storage de archivos en la nube
 
 ## 📦 Estructura de Datos
 
@@ -231,13 +241,14 @@ curl -X POST http://localhost:3000/keys/public \
 
 ## 🔐 Consideraciones de Seguridad
 
-- ⚠️ **Almacenamiento en memoria**: Los datos se almacenan en memoria (usar base de datos en producción)
+- ⚠️ **Almacenamiento en memoria**: Los metadatos se almacenan en memoria (usar base de datos en producción)
 - ⚠️ **Autenticación**: No implementada (requerida en producción)
 - ⚠️ **Cifrado real**: Implementación de cifrado pendiente
+- ✅ **Supabase Storage**: Los archivos se almacenan de forma segura en Supabase
 - ✅ **Helmet**: Protección de headers HTTP
 - ✅ **CORS**: Configurado y habilitado
 - ✅ **Expiración**: Los paquetes expiran en 7 días
-- ✅ **Límite de tamaño**: 100 MB por archivo
+- ✅ **Límite de tamaño**: 50 MB por archivo
 
 ## 🗺️ Roadmap
 
@@ -255,6 +266,7 @@ curl -X POST http://localhost:3000/keys/public \
 - [x] Implementación de endpoints
 - [x] Documentación Swagger
 - [x] Manejo de archivos con Multer
+- [x] Integración con Supabase Storage
 
 ### Fase 3 - Pendiente 🚧
 

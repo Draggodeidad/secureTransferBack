@@ -1,26 +1,8 @@
 import multer from "multer";
-import path from "path";
-import { v4 as uuidv4 } from "uuid";
-import fs from "fs";
 
-// Directorio para almacenar archivos subidos
-const uploadDir = path.join(process.cwd(), "uploads");
-
-// Crear directorio si no existe
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Configuración de almacenamiento
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (_req, file, cb) => {
-    const uniqueName = `${uuidv4()}-${Date.now()}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  },
-});
+// Configuración de almacenamiento en memoria
+// Los archivos se almacenarán temporalmente en memoria antes de subirlos a Supabase
+const storage = multer.memoryStorage();
 
 // Filtro de archivos (opcional - limitar tipos)
 const fileFilter = (
@@ -33,10 +15,11 @@ const fileFilter = (
 };
 
 // Configuración de multer
+// Límite de 50 MB para Supabase Storage
 export const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100 MB máximo
+    fileSize: 50 * 1024 * 1024, // 50 MB máximo (límite de Supabase)
   },
 });

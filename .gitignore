@@ -14,3 +14,6 @@ API_DOCUMENTATION.md
 EXAMPLES.md
 test-api.ps1
 test-api.sh
+
+secureTransfer.json
+SUPABASE_SETUP.md
