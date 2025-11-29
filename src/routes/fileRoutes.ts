@@ -5,6 +5,7 @@ import {
   decryptPackage,
   getPackageMetadata,
   getPackageManifest,
+  downloadDecryptedFile,
 } from "../controllers/fileController.js";
 import { upload } from "../middlewares/upload.js";
 
@@ -158,10 +159,11 @@ router.post("/upload", upload.single("file"), uploadFile);
  * @swagger
  * /download/{packageId}:
  *   get:
- *     summary: Descargar un paquete cifrado
+ *     summary: Descargar un paquete cifrado (ZIP completo)
  *     description: |
  *       Descarga un paquete cifrado usando su ID único.
- *       El archivo se descarga en su forma cifrada.
+ *       El archivo se descarga en formato ZIP con manifest.json, encrypted_file.enc y README.txt.
+ *       Para usuarios avanzados o debugging.
  *     tags:
  *       - Archivos
  *     parameters:
@@ -174,9 +176,9 @@ router.post("/upload", upload.single("file"), uploadFile);
  *         example: "550e8400-e29b-41d4-a716-446655440000"
  *     responses:
  *       200:
- *         description: Archivo descargado exitosamente
+ *         description: Archivo ZIP descargado exitosamente
  *         content:
- *           application/octet-stream:
+ *           application/zip:
  *             schema:
  *               type: string
  *               format: binary
@@ -200,6 +202,78 @@ router.post("/upload", upload.single("file"), uploadFile);
  *               $ref: '#/components/schemas/Error'
  */
 router.get("/download/:packageId", downloadPackage);
+
+/**
+ * @swagger
+ * /download/{packageId}/decrypted:
+ *   post:
+ *     summary: Descargar archivo original descifrado directamente
+ *     description: |
+ *       Descarga el archivo original descifrado (PDF, imagen, etc.) directamente.
+ *       Requiere la clave privada del receptor.
+ *       Esta es la opción recomendada para usuarios finales.
+ *     tags:
+ *       - Archivos
+ *     parameters:
+ *       - in: path
+ *         name: packageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID único del paquete
+ *         example: "550e8400-e29b-41d4-a716-446655440000"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - privateKey
+ *             properties:
+ *               privateKey:
+ *                 type: string
+ *                 description: Clave privada RSA del receptor en formato PEM
+ *                 example: "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+ *     responses:
+ *       200:
+ *         description: Archivo original descifrado descargado exitosamente
+ *         headers:
+ *           X-File-Verified:
+ *             description: Indica si la firma y hash fueron verificados
+ *             schema:
+ *               type: boolean
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Falta la clave privada o formato inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Paquete no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       410:
+ *         description: El paquete ha expirado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error del servidor o error de descifrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post("/download/:packageId/decrypted", downloadDecryptedFile);
 
 /**
  * @swagger
