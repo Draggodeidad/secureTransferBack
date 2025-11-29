@@ -1,7 +1,10 @@
 import { type Request, type Response } from "express";
 import { v4 as uuidv4 } from "uuid";
-import fs from "fs";
 import logger from "../utils/logger.js";
+import {
+  uploadFileToSupabase,
+  downloadFileFromSupabase,
+} from "../services/supabaseService.js";
 import type {
   FilePackage,
   PackageMetadata,
@@ -30,6 +33,18 @@ export const uploadFile = async (
     const uploaderId = req.body.userId || "anonymous";
     const publicKeyFingerprint = req.body.publicKeyFingerprint || "";
 
+    // Generar nombre único para el archivo en Supabase
+    const timestamp = Date.now();
+    const fileExtension = req.file.originalname.split(".").pop() || "";
+    const supabaseFileName = `${packageId}-${timestamp}.${fileExtension}`;
+
+    // Subir archivo a Supabase Storage
+    const { path: supabasePath } = await uploadFileToSupabase(
+      supabaseFileName,
+      req.file.buffer,
+      req.file.mimetype
+    );
+
     // Crear paquete de archivo
     const filePackage: FilePackage = {
       packageId,
@@ -39,7 +54,7 @@ export const uploadFile = async (
       mimeType: req.file.mimetype,
       uploadedAt: new Date(),
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 días
-      encryptedPath: req.file.path,
+      encryptedPath: supabasePath, // Ruta en Supabase
       uploaderId,
       publicKeyFingerprint,
     };
@@ -64,8 +79,8 @@ export const uploadFile = async (
     metadataDB.set(packageId, metadata);
 
     logger.info(
-      { packageId, filename: req.file.originalname },
-      "Archivo subido exitosamente"
+      { packageId, filename: req.file.originalname, supabasePath },
+      "Archivo subido exitosamente a Supabase"
     );
 
     const response: UploadResponse = {
@@ -111,11 +126,8 @@ export const downloadPackage = async (
       return;
     }
 
-    // Verificar que el archivo existe
-    if (!fs.existsSync(filePackage.encryptedPath)) {
-      res.status(404).json({ error: "Archivo no encontrado en el servidor" });
-      return;
-    }
+    // Descargar archivo desde Supabase
+    const fileBlob = await downloadFileFromSupabase(filePackage.encryptedPath);
 
     // Actualizar contador de descargas
     const metadata = metadataDB.get(packageId);
@@ -124,14 +136,25 @@ export const downloadPackage = async (
       metadata.status = "downloaded";
     }
 
-    logger.info({ packageId }, "Descargando paquete");
+    logger.info(
+      { packageId, path: filePackage.encryptedPath },
+      "Descargando paquete desde Supabase"
+    );
+
+    // Convertir Blob a Buffer
+    const arrayBuffer = await fileBlob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Configurar headers para descarga
+    res.setHeader("Content-Type", filePackage.mimeType);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(filePackage.filename)}"`
+    );
+    res.setHeader("Content-Length", buffer.length);
 
     // Enviar archivo
-    res.download(filePackage.encryptedPath, filePackage.filename, (err) => {
-      if (err) {
-        logger.error(err, "Error al enviar archivo");
-      }
-    });
+    res.send(buffer);
   } catch (error) {
     logger.error(error, "Error al descargar paquete");
     res.status(500).json({ error: "Error al descargar el paquete" });
@@ -167,22 +190,21 @@ export const decryptPackage = async (
       return;
     }
 
-    // Verificar que el archivo existe
-    if (!fs.existsSync(filePackage.encryptedPath)) {
-      res.status(404).json({ error: "Archivo no encontrado en el servidor" });
-      return;
-    }
+    // Descargar archivo desde Supabase
+    const fileBlob = await downloadFileFromSupabase(filePackage.encryptedPath);
 
     // En producción, aquí se descifraría el archivo con la llave privada
     // Por ahora, simplemente devolvemos el archivo
-    logger.info({ packageId }, "Descifrando paquete");
+    logger.info({ packageId }, "Descifrando paquete desde Supabase");
 
-    const fileData = fs.readFileSync(filePackage.encryptedPath);
+    // Convertir Blob a Buffer
+    const arrayBuffer = await fileBlob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
     res.status(200).json({
       filename: filePackage.filename,
       mimeType: filePackage.mimeType,
-      data: fileData.toString("base64"),
+      data: buffer.toString("base64"),
       message: "Archivo descifrado exitosamente",
     });
   } catch (error) {

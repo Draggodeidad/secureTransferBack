@@ -1,13 +1,17 @@
-import express, { type Request, type Response } from "express";
 import dotenv from "dotenv";
+
+// Cargar variables de entorno
+dotenv.config();
+
+import express, { type Request, type Response } from "express";
 import swaggerUi from "swagger-ui-express";
 import swaggerJsdoc from "swagger-jsdoc";
 import cors from "cors";
 import helmet from "helmet";
 import fileRoutes from "./routes/fileRoutes.js";
 import keysRoutes from "./routes/keysRoutes.js";
-
-dotenv.config();
+import { ensureBucketExists } from "./services/supabaseService.js";
+import logger from "./utils/logger.js";
 
 const app = express();
 const port = process.env["PORT"] || 3000;
@@ -138,9 +142,22 @@ app.get("/health", (_req: Request, res: Response) => {
 app.use("/", fileRoutes);
 app.use("/keys", keysRoutes);
 
-// Iniciar servidor
-app.listen(port, () => {
-  console.log(`Servidor escuchando en el puerto ${port}`);
-  console.log(`Swagger disponible en http://localhost:${port}/api-docs`);
-  console.log(`API health disponible en http://localhost:${port}/health`);
+// Iniciar servidor y verificar bucket de Supabase
+app.listen(port, async () => {
+  console.log(`✅ Servidor escuchando en el puerto ${port}`);
+  console.log(`📚 Swagger disponible en http://localhost:${port}/api-docs`);
+  console.log(`💚 API health disponible en http://localhost:${port}/health`);
+
+  // Verificar/crear bucket de Supabase
+  try {
+    await ensureBucketExists();
+    console.log("✅ Conexión con Supabase Storage establecida");
+    logger.info("Conexión con Supabase Storage establecida");
+  } catch (error) {
+    logger.error({ error }, "Error al conectar con Supabase Storage");
+    console.error(
+      "⚠️ Error al conectar con Supabase. Verifica las credenciales en .env"
+    );
+    console.error(error);
+  }
 });
