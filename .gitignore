@@ -36,3 +36,5 @@ SOLUCION_LOGIN_GOOGLE.md
 test-auth.ps1
 functions.sql
 tables.sql
+
+examples/

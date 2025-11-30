@@ -11,6 +11,7 @@ import helmet from "helmet";
 import fileRoutes from "./routes/fileRoutes.js";
 import keysRoutes from "./routes/keysRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import historyRoutes from "./routes/historyRoutes.js";
 import { ensureBucketExists } from "./services/supabaseService.js";
 import logger from "./utils/logger.js";
 
@@ -66,6 +67,10 @@ const swaggerOptions: swaggerJsdoc.Options = {
         name: "Autenticación",
         description: "Gestión de usuarios y autenticación",
       },
+      {
+        name: "Historial",
+        description: "Historial de archivos y notificaciones",
+      },
     ],
     components: {
       securitySchemes: {
@@ -113,6 +118,8 @@ app.get("/", (_req: Request, res: Response) => {
     endpoints: {
       files: "/upload, /download/:packageId, /decrypt, /metadata/:packageId",
       keys: "/keys/public, /keys/users/:id",
+      history:
+        "/history/uploads, /history/shared, /history/notifications, /history/stats",
     },
   });
 });
@@ -156,6 +163,7 @@ app.get("/health", (_req: Request, res: Response) => {
 app.use("/auth", authRoutes);
 app.use("/", fileRoutes);
 app.use("/keys", keysRoutes);
+app.use("/history", historyRoutes);
 
 // Iniciar servidor y verificar bucket de Supabase
 app.listen(port, async () => {
