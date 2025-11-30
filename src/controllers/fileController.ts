@@ -19,6 +19,12 @@ import type {
   UploadRequest,
 } from "../types/index.js";
 import { hash } from "../services/cryptoService.js";
+import {
+  logDownload,
+  updateDownloadCount,
+  updateUserStats,
+  notifyFileDownloaded,
+} from "../services/notificationService.js";
 
 // Simulación de base de datos en memoria
 const packagesDB: Map<string, FilePackage> = new Map();
@@ -158,9 +164,59 @@ export const uploadFile = async (
       downloadCount: 0,
     };
 
-    // 7. Guardar en "base de datos"
+    // 7. Guardar en "base de datos" (memoria + Supabase)
     packagesDB.set(packageId, filePackage);
     metadataDB.set(packageId, metadata);
+
+    // 8. Guardar en Supabase (tabla files)
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabaseUrl = process.env["SUPABASE_URL"];
+    const supabaseKey =
+      process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
+      process.env["SUPABASE_ANON_KEY"];
+
+    if (supabaseUrl && supabaseKey && uploaderId !== "anonymous") {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Insertar en tabla files
+        const { error: fileError } = await supabase.from("files").insert({
+          package_id: packageId,
+          uploader_id: uploaderId,
+          original_filename: req.file.originalname,
+          original_size: req.file.size,
+          mime_type: req.file.mimetype,
+          file_hash: fileHash,
+          encrypted_size: securePackageBuffer.length,
+          encrypted_path: supabasePath,
+          master_encrypted_session_key: "dummy_key", // TODO: Implementar cifrado real
+          signature: publicKeyFingerprint,
+          max_downloads: null,
+          expires_at: filePackage.expiresAt.toISOString(),
+          allow_reshare: false,
+          require_auth: true,
+          status: "active",
+        });
+
+        if (fileError) {
+          logger.error({ fileError }, "Error al insertar archivo en Supabase");
+        } else {
+          logger.info(
+            { packageId },
+            "Archivo insertado en tabla files de Supabase"
+          );
+
+          // Actualizar estadísticas del usuario
+          const { updateUserStats } =
+            await import("../services/notificationService.js");
+          updateUserStats(uploaderId, "upload", req.file.size).catch((err) =>
+            logger.error({ err }, "Error al actualizar estadísticas de usuario")
+          );
+        }
+      } catch (supabaseError) {
+        logger.error({ supabaseError }, "Error al guardar en Supabase");
+      }
+    }
 
     logger.info(
       {
@@ -197,9 +253,10 @@ export const downloadPackage = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  try {
-    const packageId = req.params["packageId"];
+  const packageId = req.params["packageId"];
+  let downloadSuccess = false;
 
+  try {
     if (!packageId) {
       res.status(400).json({ error: "Se requiere packageId" });
       return;
@@ -217,6 +274,35 @@ export const downloadPackage = async (
       return;
     }
 
+    // Obtener información del usuario desde el header de autorización (opcional)
+    const authHeader = req.headers.authorization;
+    let userId = "anonymous";
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      try {
+        const { createClient } = await import("@supabase/supabase-js");
+        const supabaseUrl = process.env["SUPABASE_URL"];
+        const supabaseKey =
+          process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
+          process.env["SUPABASE_ANON_KEY"];
+
+        if (supabaseUrl && supabaseKey) {
+          const supabase = createClient(supabaseUrl, supabaseKey);
+          const token = authHeader.substring(7);
+          const { data: userData } = await supabase.auth.getUser(token);
+          if (userData?.user) {
+            userId = userData.user.id;
+          }
+        }
+      } catch (authError) {
+        // Si falla la autenticación, continuar como anónimo
+        logger.warn(
+          { authError },
+          "No se pudo autenticar usuario, continuando como anónimo"
+        );
+      }
+    }
+
     // Descargar paquete ZIP desde Supabase
     const fileBlob = await downloadFileFromSupabase(filePackage.encryptedPath);
 
@@ -230,13 +316,43 @@ export const downloadPackage = async (
     }
 
     logger.info(
-      { packageId, path: filePackage.encryptedPath },
+      { packageId, path: filePackage.encryptedPath, userId },
       "Descargando paquete seguro desde Supabase"
     );
 
     // Convertir Blob a Buffer
     const arrayBuffer = await fileBlob.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
+    // Marcar como exitoso antes de enviar
+    downloadSuccess = true;
+
+    // Registrar descarga en la base de datos (async, no bloquea la respuesta)
+    const ipAddress =
+      (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress;
+    const userAgent = req.headers["user-agent"];
+
+    logDownload(
+      packageId,
+      userId,
+      "zip",
+      true,
+      undefined,
+      ipAddress,
+      userAgent
+    ).catch((err) =>
+      logger.error({ err }, "Error al registrar log de descarga")
+    );
+
+    // Actualizar estadísticas (async)
+    if (userId !== "anonymous") {
+      updateUserStats(userId, "download").catch((err) =>
+        logger.error({ err }, "Error al actualizar estadísticas")
+      );
+      updateDownloadCount(packageId, userId).catch((err) =>
+        logger.error({ err }, "Error al actualizar contador de descargas")
+      );
+    }
 
     // Configurar headers para descarga del ZIP
     res.setHeader("Content-Type", "application/zip");
@@ -250,6 +366,25 @@ export const downloadPackage = async (
     res.send(buffer);
   } catch (error) {
     logger.error(error, "Error al descargar paquete");
+
+    // Registrar descarga fallida
+    const ipAddress =
+      (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress;
+    const userAgent = req.headers["user-agent"];
+    const userId = "anonymous"; // Ya que no tenemos el userId en el scope del catch
+
+    logDownload(
+      packageId || "unknown",
+      userId,
+      "zip",
+      false,
+      error instanceof Error ? error.message : "Error desconocido",
+      ipAddress,
+      userAgent
+    ).catch((err) =>
+      logger.error({ err }, "Error al registrar log de descarga fallida")
+    );
+
     res.status(500).json({ error: "Error al descargar el paquete" });
   }
 };
@@ -353,8 +488,10 @@ export const downloadDecryptedFile = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const packageId = req.params["packageId"];
+  let userId = "anonymous";
+
   try {
-    const packageId = req.params["packageId"];
     let { privateKey } = req.body;
 
     if (!packageId) {
@@ -396,8 +533,32 @@ export const downloadDecryptedFile = async (
       return;
     }
 
+    // Obtener información del usuario desde el header de autorización (opcional)
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      try {
+        const { createClient } = await import("@supabase/supabase-js");
+        const supabaseUrl = process.env["SUPABASE_URL"];
+        const supabaseKey =
+          process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
+          process.env["SUPABASE_ANON_KEY"];
+
+        if (supabaseUrl && supabaseKey) {
+          const supabase = createClient(supabaseUrl, supabaseKey);
+          const token = authHeader.substring(7);
+          const { data: userData } = await supabase.auth.getUser(token);
+          if (userData?.user) {
+            userId = userData.user.id;
+          }
+        }
+      } catch (authError) {
+        logger.warn({ authError }, "No se pudo autenticar usuario");
+      }
+    }
+
     logger.info(
-      { packageId, filename: filePackage.filename },
+      { packageId, filename: filePackage.filename, userId },
       "Descargando y descifrando archivo automáticamente"
     );
 
@@ -450,12 +611,47 @@ export const downloadDecryptedFile = async (
       }
     }
 
+    // 5. Registrar descarga en la base de datos (async)
+    const ipAddress =
+      (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress;
+    const userAgent = req.headers["user-agent"];
+
+    logDownload(
+      packageId,
+      userId,
+      "decrypted",
+      true,
+      undefined,
+      ipAddress,
+      userAgent
+    ).catch((err) =>
+      logger.error({ err }, "Error al registrar log de descarga")
+    );
+
+    // 6. Actualizar estadísticas (async)
+    if (userId !== "anonymous") {
+      updateUserStats(userId, "download").catch((err) =>
+        logger.error({ err }, "Error al actualizar estadísticas")
+      );
+      updateDownloadCount(packageId, userId).catch((err) =>
+        logger.error({ err }, "Error al actualizar contador de descargas")
+      );
+
+      // 7. Notificar al uploader que alguien descargó su archivo (async)
+      notifyFileDownloaded(
+        packageId,
+        filePackage.uploaderId,
+        userId,
+        filePackage.filename
+      ).catch((err) => logger.error({ err }, "Error al notificar descarga"));
+    }
+
     logger.info(
-      { packageId, size: fileBuffer.length, verified },
+      { packageId, size: fileBuffer.length, verified, userId },
       "Archivo descifrado y enviado exitosamente"
     );
 
-    // 5. Enviar archivo original descifrado
+    // 8. Enviar archivo original descifrado
     res.setHeader("Content-Type", filePackage.mimeType);
     res.setHeader(
       "Content-Disposition",
@@ -467,6 +663,24 @@ export const downloadDecryptedFile = async (
     res.send(fileBuffer);
   } catch (error) {
     logger.error(error, "Error al descargar archivo descifrado");
+
+    // Registrar descarga fallida
+    const ipAddress =
+      (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress;
+    const userAgent = req.headers["user-agent"];
+
+    logDownload(
+      packageId || "unknown",
+      userId,
+      "decrypted",
+      false,
+      error instanceof Error ? error.message : "Error desconocido",
+      ipAddress,
+      userAgent
+    ).catch((err) =>
+      logger.error({ err }, "Error al registrar log de descarga fallida")
+    );
+
     res.status(500).json({
       error: "Error al descifrar y descargar el archivo",
       details: error instanceof Error ? error.message : "Error desconocido",

@@ -10,6 +10,8 @@ import cors from "cors";
 import helmet from "helmet";
 import fileRoutes from "./routes/fileRoutes.js";
 import keysRoutes from "./routes/keysRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
+import historyRoutes from "./routes/historyRoutes.js";
 import { ensureBucketExists } from "./services/supabaseService.js";
 import logger from "./utils/logger.js";
 
@@ -61,7 +63,24 @@ const swaggerOptions: swaggerJsdoc.Options = {
         name: "Llaves",
         description: "Gestión de llaves públicas y privadas",
       },
+      {
+        name: "Autenticación",
+        description: "Gestión de usuarios y autenticación",
+      },
+      {
+        name: "Historial",
+        description: "Historial de archivos y notificaciones",
+      },
     ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
+      },
+    },
   },
   apis: ["./src/routes/*.ts", "./src/index.ts"],
 };
@@ -99,6 +118,8 @@ app.get("/", (_req: Request, res: Response) => {
     endpoints: {
       files: "/upload, /download/:packageId, /decrypt, /metadata/:packageId",
       keys: "/keys/public, /keys/users/:id",
+      history:
+        "/history/uploads, /history/shared, /history/notifications, /history/stats",
     },
   });
 });
@@ -139,8 +160,10 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 // Rutas de la API
+app.use("/auth", authRoutes);
 app.use("/", fileRoutes);
 app.use("/keys", keysRoutes);
+app.use("/history", historyRoutes);
 
 // Iniciar servidor y verificar bucket de Supabase
 app.listen(port, async () => {

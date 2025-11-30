@@ -224,7 +224,7 @@ export function executeUploadFlow(
   filename: string,
   mimeType: string,
   uploaderPrivateKey: string,
-  uploaderPublicKey: string,
+  _uploaderPublicKey: string,
   recipientPublicKey: string
 ): UploadFlowResult {
   logger.info(
