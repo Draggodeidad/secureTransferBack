@@ -10,6 +10,7 @@ import cors from "cors";
 import helmet from "helmet";
 import fileRoutes from "./routes/fileRoutes.js";
 import keysRoutes from "./routes/keysRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 import { ensureBucketExists } from "./services/supabaseService.js";
 import logger from "./utils/logger.js";
 
@@ -61,7 +62,20 @@ const swaggerOptions: swaggerJsdoc.Options = {
         name: "Llaves",
         description: "Gestión de llaves públicas y privadas",
       },
+      {
+        name: "Autenticación",
+        description: "Gestión de usuarios y autenticación",
+      },
     ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
+      },
+    },
   },
   apis: ["./src/routes/*.ts", "./src/index.ts"],
 };
@@ -139,6 +153,7 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 // Rutas de la API
+app.use("/auth", authRoutes);
 app.use("/", fileRoutes);
 app.use("/keys", keysRoutes);
 

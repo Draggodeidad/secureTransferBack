@@ -32,3 +32,7 @@ docs/
 decrypt-package.ps1
 test-complete-flow.ps1
 test-download-options.ps1
+SOLUCION_LOGIN_GOOGLE.md
+test-auth.ps1
+functions.sql
+tables.sql
