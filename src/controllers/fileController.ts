@@ -254,7 +254,6 @@ export const downloadPackage = async (
   res: Response
 ): Promise<void> => {
   const packageId = req.params["packageId"];
-  let downloadSuccess = false;
 
   try {
     if (!packageId) {

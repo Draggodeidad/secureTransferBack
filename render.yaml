@@ -9,7 +9,7 @@ services:
     env: node
     region: oregon # Usa el más cercano: oregon (US West), frankfurt (EU), singapore (Asia)
     plan: free # free, starter, standard, pro
-    branch: feat/moduleCrypto # O main
+    branch: master # O main
     buildCommand: npm install && npm run build
     startCommand: npm start
     healthCheckPath: /health
