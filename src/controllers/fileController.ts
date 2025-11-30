@@ -323,9 +323,6 @@ export const downloadPackage = async (
     const arrayBuffer = await fileBlob.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Marcar como exitoso antes de enviar
-    downloadSuccess = true;
-
     // Registrar descarga en la base de datos (async, no bloquea la respuesta)
     const ipAddress =
       (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress;
